@@ -48,7 +48,7 @@ def postgres_deploy_sql(app_users: list[str], admin_users: list[str], default_pa
     statements.extend(
         [
             f"CREATE TABLE IF NOT EXISTS {SCHEMA_NAME}.customers ("
-            "customer_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,"
+            "customer_id UUID DEFAULT uuid_generate_v4(),"
             "customer_fname varchar(50),"
             "customer_lname varchar(50),"
             "full_name varchar(100),"
@@ -64,12 +64,13 @@ def postgres_deploy_sql(app_users: list[str], admin_users: list[str], default_pa
             "citizen_doc_id varchar(30),"
             "mail varchar(50),"
             "phone varchar(30))",
+            f"DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'customers_pk') THEN ALTER TABLE {SCHEMA_NAME}.customers ALTER COLUMN customer_id SET NOT NULL; ALTER TABLE {SCHEMA_NAME}.customers ADD CONSTRAINT customers_pk PRIMARY KEY (customer_id); END IF; END $$;",
             f"CREATE TABLE IF NOT EXISTS {SCHEMA_NAME}.credit_cards (card_id UUID DEFAULT uuid_generate_v4(), customer_id UUID REFERENCES {SCHEMA_NAME}.customers (customer_id), card_number varchar(30), card_validity varchar(12))",
-            f"ALTER TABLE {SCHEMA_NAME}.credit_cards ADD CONSTRAINT cc_pk PRIMARY KEY (card_id)",
+            f"DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'cc_pk') THEN ALTER TABLE {SCHEMA_NAME}.credit_cards ADD CONSTRAINT cc_pk PRIMARY KEY (card_id); END IF; END $$;",
             f"CREATE TABLE IF NOT EXISTS {SCHEMA_NAME}.features (feature_id UUID DEFAULT uuid_generate_v4(), feature_name varchar(40), feature_price real)",
-            f"ALTER TABLE {SCHEMA_NAME}.features ADD CONSTRAINT features_pk PRIMARY KEY (feature_id)",
+            f"DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'features_pk') THEN ALTER TABLE {SCHEMA_NAME}.features ADD CONSTRAINT features_pk PRIMARY KEY (feature_id); END IF; END $$;",
             f"CREATE TABLE IF NOT EXISTS {SCHEMA_NAME}.extras (extra_id UUID DEFAULT uuid_generate_v4(), extra_name varchar(40), extra_price real)",
-            f"ALTER TABLE {SCHEMA_NAME}.extras ADD CONSTRAINT extras_pk PRIMARY KEY (extra_id)",
+            f"DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'extras_pk') THEN ALTER TABLE {SCHEMA_NAME}.extras ADD CONSTRAINT extras_pk PRIMARY KEY (extra_id); END IF; END $$;",
             f"CREATE TABLE IF NOT EXISTS {SCHEMA_NAME}.transactions (trans_id UUID DEFAULT uuid_generate_v4(), feature_id UUID REFERENCES {SCHEMA_NAME}.features (feature_id), extra_id UUID REFERENCES {SCHEMA_NAME}.extras (extra_id), price real, customer_id UUID REFERENCES {SCHEMA_NAME}.customers (customer_id), card_id UUID REFERENCES {SCHEMA_NAME}.credit_cards (card_id), transaction_time TIMESTAMP DEFAULT now())",
         ]
     )

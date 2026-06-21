@@ -25,6 +25,7 @@ class DatabaseAdapter:
     def __init__(self, config: AppConfig) -> None:
         self.config = config
         self.connection: Any | None = None
+        self.show_sql = False
 
     def connect(self) -> None:
         raise NotImplementedError
@@ -33,6 +34,8 @@ class DatabaseAdapter:
         raise NotImplementedError
 
     def execute(self, sql: str) -> QueryResult:
+        if self.show_sql:
+            print(f"[SQL] {sql}")
         raise NotImplementedError
 
     def execute_scalar(self, sql: str) -> Any:
@@ -102,6 +105,8 @@ class PostgresAdapter(DatabaseAdapter):
             self.connection = None
 
     def execute(self, sql: str) -> QueryResult:
+        if self.show_sql:
+            print(f"[SQL] {sql}")
         self.connect()
         assert self.connection is not None
         with self.connection.cursor() as cursor:
@@ -160,6 +165,8 @@ class OracleAdapter(DatabaseAdapter):
             self.connection = None
 
     def execute(self, sql: str) -> QueryResult:
+        if self.show_sql:
+            print(f"[SQL] {sql}")
         self.connect()
         assert self.connection is not None
         with self.connection.cursor() as cursor:

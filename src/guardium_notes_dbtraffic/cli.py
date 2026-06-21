@@ -22,6 +22,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print execution plan without running database operations",
     )
+    parser.add_argument(
+        "--show-sql",
+        action="store_true",
+        help="Print SQL statements before execution",
+    )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -71,6 +76,7 @@ def main() -> None:
         return
 
     adapter = build_adapter(config)
+    adapter.show_sql = args.show_sql
 
     if args.command == "deploy-schema":
         adapter.deploy_micro_payments_schema()
