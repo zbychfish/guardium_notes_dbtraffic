@@ -26,8 +26,7 @@ def load_config(path: Path) -> AppConfig:
         password=str(database_raw.get("password", "")),
     )
     workload = WorkloadConfig(
-        duration_seconds=int(workload_raw.get("duration_seconds", 60)),
-        virtual_users=int(workload_raw.get("virtual_users", 1)),
+        duration_seconds=int(workload_raw.get("duration_seconds", 3600)),
         think_time_ms=int(workload_raw.get("think_time_ms", 250)),
     )
     scenario = ScenarioConfig(
