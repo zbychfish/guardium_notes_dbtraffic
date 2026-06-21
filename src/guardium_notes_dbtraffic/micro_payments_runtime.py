@@ -3,9 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from random import choice, randint, random
 from time import sleep
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
-from guardium_notes_dbtraffic.db import DatabaseAdapter
+if TYPE_CHECKING:
+    from guardium_notes_dbtraffic.models import AppConfig
+
+from guardium_notes_dbtraffic.db import DatabaseAdapter, build_adapter
 from guardium_notes_dbtraffic.micro_payments_data import (
     build_domains,
     generate_citizen_document_id,
@@ -169,7 +172,7 @@ def _build_transaction_insert_sql(database_type: str, customer_id: Any, card_id:
     )
 
 
-def run_micro_payments(adapter: DatabaseAdapter, duration_seconds: int, think_time_ms: int, locale: str) -> RuntimeStats:
+def run_micro_payments(config: AppConfig, duration_seconds: int, think_time_ms: int, locale: str, show_sql: bool = False) -> RuntimeStats:
     stats = RuntimeStats()
     operations = [
         ("get_customer_info", 0.90),
@@ -179,8 +182,41 @@ def run_micro_payments(adapter: DatabaseAdapter, duration_seconds: int, think_ti
     ]
     info_types = list(APP_INFO_TYPES)
     iterations = max(1, int((duration_seconds * 1000) / max(think_time_ms, 1)))
+    
+    app_users = config.scenario.options.get("app_users", ["appuser1", "appuser2"])
+    app_users = [str(u) for u in app_users]
+    default_password = str(config.scenario.options.get("default_password", config.database.password or "Guardium123!"))
+    
+    session_steps = randint(5, 15)
+    current_step = 0
+    adapter: DatabaseAdapter | None = None
 
-    for _ in range(iterations):
+    for iteration in range(iterations):
+        if current_step == 0:
+            if adapter is not None:
+                adapter.close()
+            current_user = choice(app_users)
+            session_steps = randint(5, 15)
+            user_config = AppConfig(
+                database=type(config.database)(
+                    type=config.database.type,
+                    host=config.database.host,
+                    port=config.database.port,
+                    database=config.database.database,
+                    user=current_user,
+                    password=default_password,
+                ),
+                workload=config.workload,
+                scenario=config.scenario,
+            )
+            adapter = build_adapter(user_config)
+            adapter.show_sql = show_sql
+            if show_sql:
+                print(f"\n[SESSION] Switching to user: {current_user} for {session_steps} operations")
+        
+        if adapter is None:
+            continue
+        
         roll = random()
         cumulative = 0.0
         selected_operation = "get_customer_info"
@@ -224,7 +260,15 @@ def run_micro_payments(adapter: DatabaseAdapter, duration_seconds: int, think_ti
                     stats.buy_feature_count += 1
 
         stats.executed_operations += 1
+        current_step += 1
+        
+        if current_step >= session_steps:
+            current_step = 0
+        
         sleep(max(think_time_ms, 0) / 1000.0)
+    
+    if adapter is not None:
+        adapter.close()
 
     return stats
 

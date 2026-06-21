@@ -32,15 +32,23 @@ def build_parser() -> argparse.ArgumentParser:
 
     subparsers.add_parser("list-scenarios", help="List available scenarios")
     subparsers.add_parser("validate-config", help="Validate configuration file")
-    subparsers.add_parser("deploy-schema", help="Deploy scenario schema objects")
-    subparsers.add_parser("seed-data", help="Seed scenario business data")
-    subparsers.add_parser("cleanup-schema", help="Cleanup scenario schema objects")
+    subparsers.add_parser("deploy-schema", help="Deploy scenario schema objects (requires admin user)")
+    subparsers.add_parser("seed-data", help="Seed scenario business data (requires admin user)")
+    subparsers.add_parser("cleanup-schema", help="Cleanup scenario schema objects (requires admin user)")
+    subparsers.add_parser("rebuild", help="Cleanup, deploy and seed in one command (requires admin user)")
     run_parser = subparsers.add_parser("run", help="Run configured scenario")
     run_parser.add_argument(
-        "--duration-seconds",
+        "--duration",
         type=int,
         default=None,
-        help="Override workload duration from config",
+        help="Duration in minutes (overrides config)",
+    )
+    run_parser.add_argument(
+        "--speed",
+        type=str,
+        choices=["slow", "normal", "fast", "insane"],
+        default=None,
+        help="Execution speed: slow=1000ms, normal=250ms, fast=100ms, insane=0ms",
     )
     return parser
 
@@ -96,21 +104,39 @@ def main() -> None:
         print(f"Schema cleaned for scenario {scenario.name} on {config.database.type}")
         return
 
+    if args.command == "rebuild":
+        print("Rebuilding schema...")
+        adapter.cleanup_micro_payments_schema()
+        print("Schema cleaned")
+        adapter.deploy_micro_payments_schema()
+        print("Schema deployed")
+        adapter.seed_micro_payments_data()
+        adapter.close()
+        print(f"Rebuild complete for scenario {scenario.name} on {config.database.type}")
+        return
+
     if args.command == "run":
-        duration_seconds = args.duration_seconds or config.workload.duration_seconds
+        duration_minutes = args.duration if args.duration is not None else (config.workload.duration_seconds // 60)
+        duration_seconds = duration_minutes * 60
+        
+        speed_map = {"slow": 1000, "normal": 250, "fast": 100, "insane": 0}
+        think_time_ms = speed_map.get(args.speed, config.workload.think_time_ms) if args.speed else config.workload.think_time_ms
+        
         _print_execution_plan(config_path, config, scenario, duration_seconds)
+        print(f"Duration: {duration_minutes} minutes ({duration_seconds} seconds)")
+        print(f"Think time: {think_time_ms}ms")
 
         if args.dry_run:
             return
 
         locale = str(config.scenario.options.get("locale", "pl_PL"))
         stats = run_micro_payments(
-            adapter=adapter,
+            config=config,
             duration_seconds=duration_seconds,
-            think_time_ms=config.workload.think_time_ms,
+            think_time_ms=think_time_ms,
             locale=locale,
+            show_sql=args.show_sql,
         )
-        adapter.close()
         print("Execution completed.")
         print(f"Executed operations: {stats.executed_operations}")
         print(f"get_customer_info: {stats.get_customer_info_count}")
