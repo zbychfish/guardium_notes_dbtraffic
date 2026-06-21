@@ -3,12 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from random import choice, randint, random
 from time import sleep
-from typing import Any, TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from guardium_notes_dbtraffic.models import AppConfig
+from typing import Any
 
 from guardium_notes_dbtraffic.db import DatabaseAdapter, build_adapter
+from guardium_notes_dbtraffic.models import AppConfig, DatabaseConfig
 from guardium_notes_dbtraffic.micro_payments_data import (
     build_domains,
     generate_citizen_document_id,
@@ -198,7 +196,7 @@ def run_micro_payments(config: AppConfig, duration_seconds: int, think_time_ms: 
             current_user = choice(app_users)
             session_steps = randint(5, 15)
             user_config = AppConfig(
-                database=type(config.database)(
+                database=DatabaseConfig(
                     type=config.database.type,
                     host=config.database.host,
                     port=config.database.port,
