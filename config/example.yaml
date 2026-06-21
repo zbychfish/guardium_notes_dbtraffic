@@ -22,6 +22,6 @@ scenario:
       - appuser2
     admin_users:
       - adminuser1
-    default_password: Guardium123!
+    default_password: password
 
 # Made with Bob
