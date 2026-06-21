@@ -48,7 +48,7 @@ def postgres_deploy_sql(app_users: list[str], admin_users: list[str], default_pa
     statements.extend(
         [
             f"CREATE TABLE IF NOT EXISTS {SCHEMA_NAME}.customers ("
-            "customer_id UUID DEFAULT uuid_generate_v4(),"
+            "customer_id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,"
             "customer_fname varchar(50),"
             "customer_lname varchar(50),"
             "full_name varchar(100),"
@@ -64,8 +64,6 @@ def postgres_deploy_sql(app_users: list[str], admin_users: list[str], default_pa
             "citizen_doc_id varchar(30),"
             "mail varchar(50),"
             "phone varchar(30))",
-            f"ALTER TABLE {SCHEMA_NAME}.customers ALTER COLUMN customer_id SET NOT NULL",
-            f"ALTER TABLE {SCHEMA_NAME}.customers ADD CONSTRAINT customers_pk PRIMARY KEY (customer_id)",
             f"CREATE TABLE IF NOT EXISTS {SCHEMA_NAME}.credit_cards (card_id UUID DEFAULT uuid_generate_v4(), customer_id UUID REFERENCES {SCHEMA_NAME}.customers (customer_id), card_number varchar(30), card_validity varchar(12))",
             f"ALTER TABLE {SCHEMA_NAME}.credit_cards ADD CONSTRAINT cc_pk PRIMARY KEY (card_id)",
             f"CREATE TABLE IF NOT EXISTS {SCHEMA_NAME}.features (feature_id UUID DEFAULT uuid_generate_v4(), feature_name varchar(40), feature_price real)",
