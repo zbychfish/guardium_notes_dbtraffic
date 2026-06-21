@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Dict, List
 
 
-@dataclass(slots=True)
+@dataclass
 class DatabaseConfig:
     type: str
     host: str
@@ -12,34 +14,34 @@ class DatabaseConfig:
     password: str = ""
 
 
-@dataclass(slots=True)
+@dataclass
 class WorkloadConfig:
     duration_seconds: int = 60
     virtual_users: int = 1
     think_time_ms: int = 250
 
 
-@dataclass(slots=True)
+@dataclass
 class ScenarioConfig:
     name: str
-    options: dict[str, Any] = field(default_factory=dict)
+    options: Dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass(slots=True)
+@dataclass
 class AppConfig:
     database: DatabaseConfig
     workload: WorkloadConfig
     scenario: ScenarioConfig
 
 
-@dataclass(slots=True)
+@dataclass
 class OperationDefinition:
     name: str
     weight: int
 
 
-@dataclass(slots=True)
+@dataclass
 class ExecutionPlan:
-    operations: list[OperationDefinition]
+    operations: List[OperationDefinition]
 
 # Made with Bob

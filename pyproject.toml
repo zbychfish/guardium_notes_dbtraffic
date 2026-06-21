@@ -7,7 +7,7 @@ name = "guardium-notes-dbtraffic"
 version = "0.1.0"
 description = "Universal application traffic generator framework"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.9"
 dependencies = [
   "PyYAML>=6.0",
   "faker>=25.0.0",
