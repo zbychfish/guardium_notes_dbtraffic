@@ -21,7 +21,7 @@ from guardium_notes_dbtraffic.micro_payments_defaults import APP_INFO_TYPES
 from guardium_notes_dbtraffic.micro_payments_schema import oracle_deploy_sql, postgres_deploy_sql
 
 
-@dataclass(slots=True)
+@dataclass
 class SeedCustomer:
     customer_fname: str
     customer_lname: str

@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from guardium_notes_dbtraffic.models import AppConfig
 
 
-@dataclass(slots=True)
+@dataclass
 class MicroPaymentsDefaults:
     customer_lookup_weight: int = 90
     add_customer_weight: int = 4

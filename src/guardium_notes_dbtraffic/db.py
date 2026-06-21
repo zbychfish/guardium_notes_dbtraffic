@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, List, Tuple
 
 from guardium_notes_dbtraffic.micro_payments_constants import SCHEMA_NAME
 from guardium_notes_dbtraffic.micro_payments_schema import (
@@ -14,9 +14,9 @@ from guardium_notes_dbtraffic.micro_payments_seed import build_seed_sql
 from guardium_notes_dbtraffic.models import AppConfig
 
 
-@dataclass(slots=True)
+@dataclass
 class QueryResult:
-    rows: list[tuple[Any, ...]]
+    rows: List[Tuple[Any, ...]]
 
 
 class DatabaseAdapter:

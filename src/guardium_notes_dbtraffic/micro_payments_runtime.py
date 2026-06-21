@@ -20,7 +20,7 @@ from guardium_notes_dbtraffic.micro_payments_defaults import APP_INFO_TYPES
 from faker import Faker
 
 
-@dataclass(slots=True)
+@dataclass
 class RuntimeStats:
     executed_operations: int = 0
     get_customer_info_count: int = 0
