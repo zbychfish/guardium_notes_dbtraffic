@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "guardium-notes-dbtraffic"
+version = "0.1.0"
+description = "Universal application traffic generator framework"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "PyYAML>=6.0",
+  "faker>=25.0.0",
+]
+
+[project.scripts]
+guardium-notes-dbtraffic = "guardium_notes_dbtraffic.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

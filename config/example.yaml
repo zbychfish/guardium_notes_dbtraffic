@@ -1,0 +1,36 @@
+database:
+  type: postgres
+  host: 127.0.0.1
+  port: 5432
+  database: appdb
+  user: appuser
+  password: secret
+
+workload:
+  duration_seconds: 60
+  virtual_users: 2
+  think_time_ms: 250
+
+scenario:
+  name: micro_payments
+  options:
+    locale: pl_PL
+    seed_customers: 100
+    app_users:
+      - appuser1
+      - appuser2
+    admin_users:
+      - adminuser1
+    default_password: Guardium123!
+    info_types:
+      - name_surname
+      - email
+      - users_from_city
+      - has_user_cc
+      - extras_per_user
+      - features_per_user
+      - get_addons_per_user
+      - get_extras_per_time
+      - get_user_transactions
+
+# Made with Bob
