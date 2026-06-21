@@ -137,12 +137,13 @@ def main() -> None:
             locale=locale,
             show_sql=args.show_sql,
         )
-        print("Execution completed.")
-        print(f"Executed operations: {stats.executed_operations}")
-        print(f"get_customer_info: {stats.get_customer_info_count}")
-        print(f"add_customer: {stats.add_customer_count}")
-        print(f"add_credit_card: {stats.add_credit_card_count}")
-        print(f"buy_feature: {stats.buy_feature_count}")
+        print("\nExecution completed.")
+        print(f"Sessions: {stats.sessions_count}")
+        print(f"Total operations: {stats.executed_operations}")
+        print(f"  - get_customer_info: {stats.get_customer_info_count}")
+        print(f"  - add_customer: {stats.add_customer_count}")
+        print(f"  - add_credit_card: {stats.add_credit_card_count}")
+        print(f"  - buy_feature: {stats.buy_feature_count}")
 
 if __name__ == "__main__":
     main()

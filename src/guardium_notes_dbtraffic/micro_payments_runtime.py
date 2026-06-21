@@ -24,6 +24,7 @@ from faker import Faker
 @dataclass
 class RuntimeStats:
     executed_operations: int = 0
+    sessions_count: int = 0
     get_customer_info_count: int = 0
     add_customer_count: int = 0
     add_credit_card_count: int = 0
@@ -195,6 +196,7 @@ def run_micro_payments(config: AppConfig, duration_seconds: int, think_time_ms: 
                 adapter.close()
             current_user = choice(app_users)
             session_steps = randint(5, 15)
+            stats.sessions_count += 1
             user_config = AppConfig(
                 database=DatabaseConfig(
                     type=config.database.type,
@@ -211,6 +213,8 @@ def run_micro_payments(config: AppConfig, duration_seconds: int, think_time_ms: 
             adapter.show_sql = show_sql
             if show_sql:
                 print(f"\n[SESSION] Switching to user: {current_user} for {session_steps} operations")
+            else:
+                print(f"\r{stats.sessions_count}/{stats.executed_operations}", end="", flush=True)
         
         if adapter is None:
             continue
@@ -259,6 +263,9 @@ def run_micro_payments(config: AppConfig, duration_seconds: int, think_time_ms: 
 
         stats.executed_operations += 1
         current_step += 1
+        
+        if not show_sql:
+            print(f"\r{stats.sessions_count}/{stats.executed_operations}", end="", flush=True)
         
         if current_step >= session_steps:
             current_step = 0

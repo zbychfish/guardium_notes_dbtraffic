@@ -16,8 +16,7 @@ class DatabaseConfig:
 
 @dataclass
 class WorkloadConfig:
-    duration_seconds: int = 60
-    virtual_users: int = 1
+    duration_seconds: int = 3600
     think_time_ms: int = 250
 
 

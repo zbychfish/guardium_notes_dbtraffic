@@ -1,15 +1,16 @@
+# Admin config - for deploy-schema, seed-data, cleanup-schema, rebuild
+# Use super user (postgres, tom, etc.) with full privileges
 database:
   type: postgres
   host: 127.0.0.1
   port: 5432
-  database: appdb
-  user: appuser
-  password: secret
+  database: postgres
+  user: postgres
+  password: postgres
 
 workload:
-  duration_seconds: 60
-  virtual_users: 2
-  think_time_ms: 250
+  duration_seconds: 3600  # 60 minutes (used if --duration not specified)
+  think_time_ms: 250      # normal speed (used if --speed not specified)
 
 scenario:
   name: micro_payments
@@ -22,15 +23,5 @@ scenario:
     admin_users:
       - adminuser1
     default_password: Guardium123!
-    info_types:
-      - name_surname
-      - email
-      - users_from_city
-      - has_user_cc
-      - extras_per_user
-      - features_per_user
-      - get_addons_per_user
-      - get_extras_per_time
-      - get_user_transactions
 
 # Made with Bob
