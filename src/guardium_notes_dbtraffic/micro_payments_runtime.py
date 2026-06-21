@@ -186,7 +186,7 @@ def run_micro_payments(config: AppConfig, duration_seconds: int, think_time_ms: 
     app_users = [str(u) for u in app_users]
     default_password = str(config.scenario.options.get("default_password", config.database.password or "Guardium123!"))
     
-    session_steps = randint(5, 15)
+    session_steps = randint(15, 35)
     current_step = 0
     adapter: DatabaseAdapter | None = None
 
@@ -195,7 +195,7 @@ def run_micro_payments(config: AppConfig, duration_seconds: int, think_time_ms: 
             if adapter is not None:
                 adapter.close()
             current_user = choice(app_users)
-            session_steps = randint(5, 15)
+            session_steps = randint(15, 35)
             stats.sessions_count += 1
             user_config = AppConfig(
                 database=DatabaseConfig(
