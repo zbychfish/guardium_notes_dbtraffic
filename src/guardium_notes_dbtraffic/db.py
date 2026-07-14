@@ -207,6 +207,26 @@ class InformixAdapter(DatabaseAdapter):
     def connect(self) -> None:
         if self.connection is not None:
             return
+        import os
+        import subprocess
+        if not os.environ.get("INFORMIXDIR"):
+            try:
+                result = subprocess.run(
+                    ["su", "-", "informix", "-c", "echo $INFORMIXDIR"],
+                    capture_output=True, text=True, timeout=5,
+                )
+                informix_dir = result.stdout.strip()
+                if informix_dir:
+                    os.environ["INFORMIXDIR"] = informix_dir
+                    os.environ.setdefault("INFORMIXSERVER", self.config.database.server or "")
+                    lib = os.environ.get("LD_LIBRARY_PATH", "")
+                    for sub in ("lib", "lib/esql"):
+                        path = f"{informix_dir}/{sub}"
+                        if path not in lib:
+                            lib = f"{path}:{lib}"
+                    os.environ["LD_LIBRARY_PATH"] = lib
+            except Exception:
+                pass
         import IfxPy
 
         server = self.config.database.server or self.config.database.database
@@ -235,7 +255,7 @@ class InformixAdapter(DatabaseAdapter):
         import IfxPy
         stmt = IfxPy.exec_immediate(self.connection, sql)
         rows: list[tuple[Any, ...]] = []
-        if stmt:
+        if stmt and IfxPy.num_fields(stmt) > 0:
             row = IfxPy.fetch_tuple(stmt)
             while row is not False:
                 rows.append(tuple(row))
