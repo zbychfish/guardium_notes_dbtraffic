@@ -18,7 +18,7 @@ from guardium_notes_dbtraffic.micro_payments_data import (
     generate_phone_number,
 )
 from guardium_notes_dbtraffic.micro_payments_defaults import APP_INFO_TYPES
-from guardium_notes_dbtraffic.micro_payments_schema import oracle_deploy_sql, postgres_deploy_sql
+from guardium_notes_dbtraffic.micro_payments_schema import informix_deploy_sql, oracle_deploy_sql, postgres_deploy_sql
 
 
 @dataclass
@@ -106,6 +106,34 @@ def postgres_seed_customer_sql(customers: list[SeedCustomer]) -> list[str]:
     return statements
 
 
+def informix_seed_customer_sql(customers: list[SeedCustomer]) -> list[str]:
+    statements: list[str] = []
+    for customer in customers:
+        statements.append(
+            "INSERT INTO customers ("
+            "customer_fname, customer_lname, full_name, birthday, citizen_id, birth_place, street, flat_number, "
+            "city, zipcode, driving_license, passport_id, citizen_doc_id, mail, phone"
+            ") VALUES ("
+            f"'{_escape_sql_text(customer.customer_fname)}', "
+            f"'{_escape_sql_text(customer.customer_lname)}', "
+            f"'{_escape_sql_text(customer.full_name)}', "
+            f"'{customer.birthday.strftime('%Y-%m-%d')}', "
+            f"'{_escape_sql_text(customer.citizen_id)}', "
+            f"'{_escape_sql_text(customer.birth_place)}', "
+            f"'{_escape_sql_text(customer.street)}', "
+            f"'{_escape_sql_text(customer.flat_number)}', "
+            f"'{_escape_sql_text(customer.city)}', "
+            f"'{_escape_sql_text(customer.zipcode)}', "
+            f"'{_escape_sql_text(customer.driving_license)}', "
+            f"'{_escape_sql_text(customer.passport_id)}', "
+            f"'{_escape_sql_text(customer.citizen_doc_id)}', "
+            f"'{_escape_sql_text(customer.mail)}', "
+            f"'{_escape_sql_text(customer.phone)}'"
+            ")"
+        )
+    return statements
+
+
 def oracle_seed_customer_sql(customers: list[SeedCustomer]) -> list[str]:
     statements: list[str] = []
     for customer in customers:
@@ -140,6 +168,8 @@ def build_seed_sql(database_type: str, locale: str, seed_customers: int) -> list
         return postgres_seed_customer_sql(customers)
     if database_type == "oracle":
         return oracle_seed_customer_sql(customers)
+    if database_type == "informix":
+        return informix_seed_customer_sql(customers)
     raise ValueError(f"Unsupported database type for seed SQL: {database_type}")
 
 

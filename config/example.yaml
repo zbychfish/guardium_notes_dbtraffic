@@ -8,6 +8,15 @@ database:
   user: postgres
   password: postgres
 
+# --- Informix example ---
+# database:
+#   type: informix
+#   host: 127.0.0.1
+#   port: 9088
+#   database: sysmaster      # Informix server name (INFORMIXSERVER)
+#   user: informix
+#   password: informix
+
 workload:
   duration_seconds: 3600  # 60 minutes (used if --duration not specified)
   think_time_ms: 250      # normal speed (used if --speed not specified)

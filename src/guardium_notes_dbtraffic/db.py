@@ -5,6 +5,8 @@ from typing import Any, List, Tuple
 
 from guardium_notes_dbtraffic.micro_payments_constants import SCHEMA_NAME
 from guardium_notes_dbtraffic.micro_payments_schema import (
+    informix_cleanup_sql,
+    informix_deploy_sql,
     oracle_cleanup_sql,
     oracle_deploy_sql,
     postgres_cleanup_sql,
@@ -199,11 +201,75 @@ class OracleAdapter(DatabaseAdapter):
         self.execute_batch(statements)
 
 
+class InformixAdapter(DatabaseAdapter):
+    name = "informix"
+
+    def connect(self) -> None:
+        if self.connection is not None:
+            return
+        import IfxPy
+
+        conn_str = (
+            f"SERVER={self.config.database.database};"
+            f"HOST={self.config.database.host};"
+            f"SERVICE={self.config.database.port};"
+            f"DATABASE={self.config.database.database};"
+            f"UID={self.config.database.user};"
+            f"PWD={self.config.database.password};"
+            "PROTOCOL=onsoctcp;"
+        )
+        self.connection = IfxPy.connect(conn_str, "", "")
+
+    def close(self) -> None:
+        if self.connection is not None:
+            import IfxPy
+            IfxPy.close(self.connection)
+            self.connection = None
+
+    def execute(self, sql: str) -> QueryResult:
+        if self.show_sql:
+            print(f"[SQL] {sql}")
+        self.connect()
+        assert self.connection is not None
+        import IfxPy
+        stmt = IfxPy.exec_immediate(self.connection, sql)
+        rows: list[tuple[Any, ...]] = []
+        if stmt:
+            row = IfxPy.fetch_tuple(stmt)
+            while row is not False:
+                rows.append(tuple(row))
+                row = IfxPy.fetch_tuple(stmt)
+        return QueryResult(rows=rows)
+
+    def schema_exists(self, schema_name: str) -> bool:
+        result = self.execute_scalar(
+            f"SELECT COUNT(*) FROM systables WHERE tabtype = 'T' AND owner = '{schema_name.lower()}'"
+        )
+        return int(result or 0) > 0
+
+    def deploy_micro_payments_schema(self) -> None:
+        statements = informix_deploy_sql(
+            app_users=self._app_users(),
+            admin_users=self._admin_users(),
+            default_password=self._default_password(),
+        )
+        self.execute_batch(statements)
+
+    def cleanup_micro_payments_schema(self) -> None:
+        statements = informix_cleanup_sql(
+            app_users=self._app_users(),
+            admin_users=self._admin_users(),
+        )
+        self.execute_batch(statements)
+
+
 def build_adapter(config: AppConfig) -> DatabaseAdapter:
     if config.database.type == "postgres":
         return PostgresAdapter(config)
     if config.database.type == "oracle":
         return OracleAdapter(config)
+    if config.database.type == "informix":
+        return InformixAdapter(config)
     raise ValueError(f"Unsupported database type: {config.database.type}")
 
 # Made with Bob

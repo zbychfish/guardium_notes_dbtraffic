@@ -35,6 +35,10 @@ def _escape_sql_text(value: str) -> str:
     return value.replace("'", "''")
 
 
+def _customers_table(database_type: str) -> str:
+    return "customers" if database_type == "informix" else "game.customers"
+
+
 def _build_customer_insert_sql(database_type: str, locale: str) -> str:
     faker_instance = Faker(locale)
     domains = build_domains(locale)
@@ -44,12 +48,13 @@ def _build_customer_insert_sql(database_type: str, locale: str) -> str:
     birthday = generate_date_in_range()
     full_name = f"{first_name} {last_name}"
     birthday_sql = (
-        f"DATE '{birthday.strftime('%Y-%m-%d')}'"
-        if database_type == "oracle"
-        else f"'{birthday.strftime('%Y-%m-%d')}'"
+        f"'{birthday.strftime('%Y-%m-%d')}'"
+        if database_type in ("postgres", "informix")
+        else f"DATE '{birthday.strftime('%Y-%m-%d')}'"
     )
+    table = _customers_table(database_type)
     return (
-        "INSERT INTO game.customers ("
+        f"INSERT INTO {table} ("
         "customer_fname, customer_lname, full_name, birthday, citizen_id, birth_place, street, flat_number, "
         "city, zipcode, driving_license, passport_id, citizen_doc_id, mail, phone"
         ") VALUES ("
@@ -72,74 +77,83 @@ def _build_customer_insert_sql(database_type: str, locale: str) -> str:
     )
 
 
-def _customer_id_sql(database_type: str) -> str:
+def _random_row_sql(database_type: str, table: str, column: str, where: str = "") -> str:
+    where_clause = f" WHERE {where}" if where else ""
     if database_type == "oracle":
-        return "SELECT customer_id FROM game.customers ORDER BY DBMS_RANDOM.VALUE FETCH FIRST 1 ROWS ONLY"
-    return "SELECT customer_id FROM game.customers ORDER BY random() LIMIT 1"
+        return f"SELECT {column} FROM {table}{where_clause} ORDER BY DBMS_RANDOM.VALUE FETCH FIRST 1 ROWS ONLY"
+    if database_type == "informix":
+        return f"SELECT FIRST 1 {column} FROM {table}{where_clause} ORDER BY RANDOM()"
+    return f"SELECT {column} FROM {table}{where_clause} ORDER BY random() LIMIT 1"
+
+
+def _customer_id_sql(database_type: str) -> str:
+    table = _customers_table(database_type)
+    return _random_row_sql(database_type, table, "customer_id")
 
 
 def _card_id_sql(database_type: str, customer_id: Any) -> str:
-    if database_type == "oracle":
-        return f"SELECT card_id FROM game.credit_cards WHERE customer_id = {customer_id} ORDER BY DBMS_RANDOM.VALUE FETCH FIRST 1 ROWS ONLY"
-    return f"SELECT card_id FROM game.credit_cards WHERE customer_id = '{customer_id}' ORDER BY random() LIMIT 1"
+    table = "credit_cards" if database_type == "informix" else "game.credit_cards"
+    where = f"customer_id = {customer_id}" if database_type in ("oracle", "informix") else f"customer_id = '{customer_id}'"
+    return _random_row_sql(database_type, table, "card_id", where)
 
 
 def _feature_id_sql(database_type: str) -> str:
-    if database_type == "oracle":
-        return "SELECT feature_id FROM game.features ORDER BY DBMS_RANDOM.VALUE FETCH FIRST 1 ROWS ONLY"
-    return "SELECT feature_id FROM game.features ORDER BY random() LIMIT 1"
+    table = "features" if database_type == "informix" else "game.features"
+    return _random_row_sql(database_type, table, "feature_id")
 
 
 def _extra_id_sql(database_type: str) -> str:
-    if database_type == "oracle":
-        return "SELECT extra_id FROM game.extras ORDER BY DBMS_RANDOM.VALUE FETCH FIRST 1 ROWS ONLY"
-    return "SELECT extra_id FROM game.extras ORDER BY random() LIMIT 1"
+    table = "extras" if database_type == "informix" else "game.extras"
+    return _random_row_sql(database_type, table, "extra_id")
 
 
 def _get_customer_info_sql(database_type: str, info_type: str) -> str:
+    c = "customers" if database_type == "informix" else "game.customers"
+    cc = "credit_cards" if database_type == "informix" else "game.credit_cards"
+    t = "transactions" if database_type == "informix" else "game.transactions"
     if info_type == "name_surname":
-        return "SELECT customer_fname, customer_lname FROM game.customers"
+        return f"SELECT customer_fname, customer_lname FROM {c}"
     if info_type == "email":
-        return "SELECT mail FROM game.customers"
+        return f"SELECT mail FROM {c}"
     if info_type == "users_from_city":
-        return "SELECT city, COUNT(*) FROM game.customers GROUP BY city"
+        return f"SELECT city, COUNT(*) FROM {c} GROUP BY city"
     if info_type == "has_user_cc":
         return (
-            "SELECT c.full_name, COUNT(cc.card_id) "
-            "FROM game.customers c LEFT JOIN game.credit_cards cc ON c.customer_id = cc.customer_id "
+            f"SELECT c.full_name, COUNT(cc.card_id) "
+            f"FROM {c} c LEFT JOIN {cc} cc ON c.customer_id = cc.customer_id "
             "GROUP BY c.full_name"
         )
     if info_type == "extras_per_user":
         return (
-            "SELECT c.full_name, COUNT(t.extra_id) "
-            "FROM game.customers c LEFT JOIN game.transactions t ON c.customer_id = t.customer_id "
+            f"SELECT c.full_name, COUNT(t.extra_id) "
+            f"FROM {c} c LEFT JOIN {t} t ON c.customer_id = t.customer_id "
             "GROUP BY c.full_name"
         )
     if info_type == "features_per_user":
         return (
-            "SELECT c.full_name, COUNT(t.feature_id) "
-            "FROM game.customers c LEFT JOIN game.transactions t ON c.customer_id = t.customer_id "
+            f"SELECT c.full_name, COUNT(t.feature_id) "
+            f"FROM {c} c LEFT JOIN {t} t ON c.customer_id = t.customer_id "
             "GROUP BY c.full_name"
         )
     if info_type == "get_addons_per_user":
         return (
-            "SELECT c.full_name, COUNT(t.feature_id) + COUNT(t.extra_id) "
-            "FROM game.customers c LEFT JOIN game.transactions t ON c.customer_id = t.customer_id "
+            f"SELECT c.full_name, COUNT(t.feature_id) + COUNT(t.extra_id) "
+            f"FROM {c} c LEFT JOIN {t} t ON c.customer_id = t.customer_id "
             "GROUP BY c.full_name"
         )
     if info_type == "get_extras_per_time":
-        if database_type == "oracle":
+        if database_type == "informix":
             return (
-                "SELECT TO_CHAR(transaction_time, 'YYYY-MM-DD HH24'), COUNT(extra_id) "
-                "FROM game.transactions GROUP BY TO_CHAR(transaction_time, 'YYYY-MM-DD HH24')"
+                f"SELECT EXTEND(transaction_time, YEAR TO HOUR), COUNT(extra_id) "
+                f"FROM {t} GROUP BY EXTEND(transaction_time, YEAR TO HOUR)"
             )
         return (
-            "SELECT TO_CHAR(transaction_time, 'YYYY-MM-DD HH24'), COUNT(extra_id) "
-            "FROM game.transactions GROUP BY TO_CHAR(transaction_time, 'YYYY-MM-DD HH24')"
+            f"SELECT TO_CHAR(transaction_time, 'YYYY-MM-DD HH24'), COUNT(extra_id) "
+            f"FROM {t} GROUP BY TO_CHAR(transaction_time, 'YYYY-MM-DD HH24')"
         )
     return (
-        "SELECT c.full_name, COUNT(t.trans_id) "
-        "FROM game.customers c LEFT JOIN game.transactions t ON c.customer_id = t.customer_id "
+        f"SELECT c.full_name, COUNT(t.trans_id) "
+        f"FROM {c} c LEFT JOIN {t} t ON c.customer_id = t.customer_id "
         "GROUP BY c.full_name"
     )
 
@@ -147,10 +161,11 @@ def _get_customer_info_sql(database_type: str, info_type: str) -> str:
 def _build_credit_card_insert_sql(database_type: str, customer_id: Any) -> str:
     card_number = "".join(str(randint(0, 9)) for _ in range(16))
     card_validity = f"{randint(1, 12):02d}/{randint(26, 35)}"
-    if database_type == "oracle":
+    if database_type in ("oracle", "informix"):
         return (
-            "INSERT INTO game.credit_cards (card_number, card_validity, customer_id) VALUES ("
-            f"'{card_number}', '{card_validity}', {customer_id})"
+            f"INSERT INTO {'credit_cards' if database_type == 'informix' else 'game.credit_cards'} "
+            f"(card_number, card_validity, customer_id) VALUES "
+            f"('{card_number}', '{card_validity}', {customer_id})"
         )
     return (
         "INSERT INTO game.credit_cards (customer_id, card_number, card_validity) VALUES ("
@@ -160,13 +175,14 @@ def _build_credit_card_insert_sql(database_type: str, customer_id: Any) -> str:
 
 def _build_transaction_insert_sql(database_type: str, customer_id: Any, card_id: Any, feature_id: Any, extra_id: Any) -> str:
     price = randint(1, 15)
-    if database_type == "oracle":
+    table = "transactions" if database_type == "informix" else "game.transactions"
+    if database_type in ("oracle", "informix"):
         return (
-            "INSERT INTO game.transactions (feature_id, extra_id, price, customer_id, card_id) VALUES ("
+            f"INSERT INTO {table} (feature_id, extra_id, price, customer_id, card_id) VALUES ("
             f"{feature_id}, {extra_id}, {price}, {customer_id}, {card_id})"
         )
     return (
-        "INSERT INTO game.transactions (feature_id, extra_id, price, customer_id, card_id) VALUES ("
+        f"INSERT INTO {table} (feature_id, extra_id, price, customer_id, card_id) VALUES ("
         f"'{feature_id}', '{extra_id}', {price}, '{customer_id}', '{card_id}')"
     )
 

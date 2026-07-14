@@ -2,6 +2,38 @@ from guardium_notes_dbtraffic.micro_payments_constants import ADMIN_ROLE_NAME, A
 from guardium_notes_dbtraffic.micro_payments_defaults import EXTRA_DESCRIPTIONS, EXTRA_PRICES, FEATURE_DESCRIPTIONS, FEATURE_PRICES
 
 
+def informix_cleanup_sql(app_users: list[str], admin_users: list[str]) -> list[str]:
+    statements: list[str] = []
+    for table in ["transactions", "credit_cards", "customers", "features", "extras"]:
+        statements.append(f"DROP TABLE IF EXISTS {table}")
+    for user in app_users + admin_users:
+        statements.append(f"DROP USER {user}")
+    return statements
+
+
+def informix_deploy_sql(app_users: list[str], admin_users: list[str], default_password: str) -> list[str]:
+    statements = [
+        "CREATE TABLE IF NOT EXISTS customers (customer_id SERIAL PRIMARY KEY, customer_fname VARCHAR(50), customer_lname VARCHAR(50), full_name VARCHAR(100), birthday DATE, citizen_id VARCHAR(20), birth_place VARCHAR(50), street VARCHAR(50), flat_number VARCHAR(10), city VARCHAR(50), zipcode VARCHAR(10), driving_license VARCHAR(30), passport_id VARCHAR(30), citizen_doc_id VARCHAR(30), mail VARCHAR(50), phone VARCHAR(30))",
+        "CREATE TABLE IF NOT EXISTS credit_cards (card_id SERIAL PRIMARY KEY, card_number VARCHAR(30), card_validity VARCHAR(12), customer_id INTEGER NOT NULL REFERENCES customers(customer_id))",
+        "CREATE TABLE IF NOT EXISTS features (feature_id SERIAL PRIMARY KEY, feature_name VARCHAR(100), feature_price FLOAT)",
+        "CREATE TABLE IF NOT EXISTS extras (extra_id SERIAL PRIMARY KEY, extra_name VARCHAR(100), extra_price FLOAT)",
+        "CREATE TABLE IF NOT EXISTS transactions (trans_id SERIAL PRIMARY KEY, feature_id INTEGER REFERENCES features(feature_id), extra_id INTEGER REFERENCES extras(extra_id), price FLOAT, customer_id INTEGER NOT NULL REFERENCES customers(customer_id), card_id INTEGER NOT NULL REFERENCES credit_cards(card_id), transaction_time DATETIME YEAR TO SECOND DEFAULT CURRENT YEAR TO SECOND)",
+    ]
+    for feature_name, feature_price in zip(FEATURE_DESCRIPTIONS, FEATURE_PRICES, strict=True):
+        escaped = feature_name.replace("'", "''")
+        statements.append(f"INSERT INTO features (feature_name, feature_price) VALUES ('{escaped}', {feature_price})")
+    for extra_name, extra_price in zip(EXTRA_DESCRIPTIONS, EXTRA_PRICES, strict=True):
+        escaped = extra_name.replace("'", "''")
+        statements.append(f"INSERT INTO extras (extra_name, extra_price) VALUES ('{escaped}', {extra_price})")
+    for user in app_users:
+        for table_name in ["customers", "credit_cards", "features", "transactions", "extras"]:
+            statements.append(f"GRANT SELECT, INSERT, UPDATE, DELETE ON {table_name} TO {user}")
+    for user in admin_users:
+        for table_name in ["customers", "credit_cards", "features", "transactions", "extras"]:
+            statements.append(f"GRANT SELECT ON {table_name} TO {user}")
+    return statements
+
+
 def postgres_cleanup_sql(app_users: list[str], admin_users: list[str]) -> list[str]:
     statements: list[str] = []
     for user in app_users:
