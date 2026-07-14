@@ -238,7 +238,7 @@ class InformixAdapter(DatabaseAdapter):
             "com.informix.jdbc.IfxDriver",
             url,
             [self.config.database.user, self.config.database.password],
-            jdbc_jar,
+            jdbc_jars,
         )
         self.connection.jconn.setAutoCommit(True)
 
