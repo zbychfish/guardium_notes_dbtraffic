@@ -228,7 +228,8 @@ class InformixAdapter(DatabaseAdapter):
             return
         import jaydebeapi
 
-        jdbc_jar = str(self._scenario_option("jdbc_jar", "")) or self._find_jdbc_jar()
+        jdbc_jar_option = str(self._scenario_option("jdbc_jar", ""))
+        jdbc_jars: list[str] = jdbc_jar_option.split(":") if jdbc_jar_option else self._find_jdbc_jars()
         server = self.config.database.server or self.config.database.database
         url = (
             f"jdbc:informix-sqli://{self.config.database.host}:{self.config.database.port}"
