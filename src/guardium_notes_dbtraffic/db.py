@@ -204,23 +204,54 @@ class OracleAdapter(DatabaseAdapter):
 class InformixAdapter(DatabaseAdapter):
     name = "informix"
 
+    def _configure_odbc(self) -> None:
+        import importlib.util
+        import os
+
+        spec = importlib.util.find_spec("IfxPy")
+        if not (spec and spec.origin):
+            return
+        site_packages = os.path.dirname(os.path.dirname(spec.origin))
+        driver_dir = os.path.join(site_packages, "onedb-odbc-driver")
+        odbc_ini = os.path.join(driver_dir, "etc", "odbc.ini")
+        if not os.path.isfile(odbc_ini):
+            return
+
+        informix_dir = os.environ.get("INFORMIXDIR", "/opt/ibm/informix")
+        server = self.config.database.server or self.config.database.database
+        database = self.config.database.database
+        cli_so = os.path.join(driver_dir, "lib", "cli", "iclit09b.so")
+        translation_so = os.path.join(driver_dir, "lib", "esql", "igo4a304.so")
+
+        content = (
+            "[ODBC Data Sources]\n"
+            f"{server}=HCL OneDB ODBC DRIVER\n"
+            "\n"
+            f"[{server}]\n"
+            f"Driver={cli_so}\n"
+            "Description=HCL OneDB ODBC DRIVER\n"
+            f"Database={database}\n"
+            f"Servername={server}\n"
+            "CLIENT_LOCALE=en_us.8859-1\n"
+            "DB_LOCALE=en_us.8859-1\n"
+            f"TRANSLATIONDLL={translation_so}\n"
+            "\n"
+            "[ODBC]\n"
+            "Trace=0\n"
+            "TraceFile=/tmp/odbctrace.out\n"
+            f"InstallDir={informix_dir}\n"
+        )
+        with open(odbc_ini, "w") as f:
+            f.write(content)
+
+        os.environ["ODBCINI"] = odbc_ini
+        os.environ.setdefault("INFORMIXDIR", informix_dir)
+        os.environ.setdefault("INFORMIXSERVER", server)
+
     def connect(self) -> None:
         if self.connection is not None:
             return
-        import os
-        if not os.environ.get("INFORMIXDIR"):
-            import subprocess
-            try:
-                result = subprocess.run(
-                    ["su", "-", "informix", "-c", "echo $INFORMIXDIR"],
-                    capture_output=True, text=True, timeout=5,
-                )
-                informix_dir = result.stdout.strip()
-                if informix_dir:
-                    os.environ["INFORMIXDIR"] = informix_dir
-                    os.environ.setdefault("INFORMIXSERVER", self.config.database.server or "")
-            except Exception:
-                pass
+        self._configure_odbc()
         import IfxPy
 
         server = self.config.database.server or self.config.database.database
