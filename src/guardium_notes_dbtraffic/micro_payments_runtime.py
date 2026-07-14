@@ -50,7 +50,7 @@ def _build_customer_insert_sql(database_type: str, locale: str) -> str:
     if database_type == "postgres":
         birthday_sql = f"'{birthday.strftime('%Y-%m-%d')}'"
     elif database_type == "informix":
-        birthday_sql = f"TO_DATE('{birthday.strftime('%Y-%m-%d')}', '%Y-%m-%d')"
+        birthday_sql = f"TO_DATE('{birthday.strftime('%Y-%m-%d')}', 'YYYY-MM-DD')"
     else:
         birthday_sql = f"DATE '{birthday.strftime('%Y-%m-%d')}'"
     table = _customers_table(database_type)
