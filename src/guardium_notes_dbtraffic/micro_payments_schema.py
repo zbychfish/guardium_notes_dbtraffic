@@ -5,7 +5,7 @@ from guardium_notes_dbtraffic.micro_payments_defaults import EXTRA_DESCRIPTIONS,
 def informix_cleanup_sql(app_users: list[str], admin_users: list[str]) -> list[str]:
     statements: list[str] = []
     for table in ["transactions", "credit_cards", "customers", "features", "extras"]:
-        statements.append(f"DROP TABLE IF EXISTS {table}")
+        statements.append(f"DROP TABLE {table}")
     for user in app_users + admin_users:
         statements.append(f"DROP USER {user}")
     return statements

@@ -281,7 +281,15 @@ class InformixAdapter(DatabaseAdapter):
             app_users=self._app_users(),
             admin_users=self._admin_users(),
         )
-        self.execute_batch(statements)
+        for statement in statements:
+            try:
+                self.execute(statement)
+            except Exception as exc:
+                msg = str(exc)
+                if any(code in msg for code in ("-206", "-951", "-25596")):
+                    pass  # table/user does not exist – safe to ignore during cleanup
+                else:
+                    raise
 
 
 def build_adapter(config: AppConfig) -> DatabaseAdapter:
