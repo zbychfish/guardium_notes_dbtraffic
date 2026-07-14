@@ -209,8 +209,9 @@ class InformixAdapter(DatabaseAdapter):
             return
         import IfxPy
 
+        server = self.config.database.server or self.config.database.database
         conn_str = (
-            f"SERVER={self.config.database.database};"
+            f"SERVER={server};"
             f"HOST={self.config.database.host};"
             f"SERVICE={self.config.database.port};"
             f"DATABASE={self.config.database.database};"

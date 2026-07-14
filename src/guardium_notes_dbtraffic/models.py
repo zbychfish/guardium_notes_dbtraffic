@@ -12,6 +12,7 @@ class DatabaseConfig:
     database: str
     user: str
     password: str = ""
+    server: str = ""
 
 
 @dataclass

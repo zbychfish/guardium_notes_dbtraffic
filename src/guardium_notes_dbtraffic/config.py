@@ -24,6 +24,7 @@ def load_config(path: Path) -> AppConfig:
         database=str(database_raw["database"]),
         user=str(database_raw["user"]),
         password=str(database_raw.get("password", "")),
+        server=str(database_raw.get("server", "")),
     )
     workload = WorkloadConfig(
         duration_seconds=int(workload_raw.get("duration_seconds", 3600)),
