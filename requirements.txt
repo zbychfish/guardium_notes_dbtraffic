@@ -5,4 +5,5 @@ faker>=25.0.0
 psycopg2-binary>=2.9.9
 oracledb>=2.2.1
 mysql-connector-python>=9.0.0
-IfxPy>=3.0.3
+JayDeBeApi>=1.2.3
+JPype1>=1.5.0

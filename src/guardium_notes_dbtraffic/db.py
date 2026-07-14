@@ -204,72 +204,46 @@ class OracleAdapter(DatabaseAdapter):
 class InformixAdapter(DatabaseAdapter):
     name = "informix"
 
-    def _configure_odbc(self) -> None:
-        import importlib.util
+    @staticmethod
+    def _find_jdbc_jar() -> str:
         import os
-
-        spec = importlib.util.find_spec("IfxPy")
-        if not (spec and spec.origin):
-            return
-        site_packages = os.path.dirname(os.path.dirname(spec.origin))
-        driver_dir = os.path.join(site_packages, "onedb-odbc-driver")
-        odbc_ini = os.path.join(driver_dir, "etc", "odbc.ini")
-        if not os.path.isfile(odbc_ini):
-            return
-
-        informix_dir = os.environ.get("INFORMIXDIR", "/opt/ibm/informix")
-        server = self.config.database.server or self.config.database.database
-        database = self.config.database.database
-        cli_so = os.path.join(driver_dir, "lib", "cli", "iclit09b.so")
-        translation_so = os.path.join(driver_dir, "lib", "esql", "igo4a304.so")
-
-        content = (
-            "[ODBC Data Sources]\n"
-            f"{server}=HCL OneDB ODBC DRIVER\n"
-            "\n"
-            f"[{server}]\n"
-            f"Driver={cli_so}\n"
-            "Description=HCL OneDB ODBC DRIVER\n"
-            f"Database={database}\n"
-            f"Servername={server}\n"
-            "CLIENT_LOCALE=en_us.8859-1\n"
-            "DB_LOCALE=en_us.8859-1\n"
-            f"TRANSLATIONDLL={translation_so}\n"
-            "\n"
-            "[ODBC]\n"
-            "Trace=0\n"
-            "TraceFile=/tmp/odbctrace.out\n"
-            f"InstallDir={informix_dir}\n"
+        candidates = [
+            "/opt/ibm/informix/jdbc/lib/ifxjdbc.jar",
+            "/opt/informix/jdbc/lib/ifxjdbc.jar",
+            "/usr/informix/jdbc/lib/ifxjdbc.jar",
+        ]
+        informix_dir = os.environ.get("INFORMIXDIR", "")
+        if informix_dir:
+            candidates.insert(0, os.path.join(informix_dir, "jdbc", "lib", "ifxjdbc.jar"))
+        for path in candidates:
+            if os.path.isfile(path):
+                return path
+        raise FileNotFoundError(
+            "ifxjdbc.jar not found. Set jdbc_jar in scenario options or install Informix JDBC driver."
         )
-        with open(odbc_ini, "w") as f:
-            f.write(content)
-
-        os.environ["ODBCINI"] = odbc_ini
-        os.environ.setdefault("INFORMIXDIR", informix_dir)
-        os.environ.setdefault("INFORMIXSERVER", server)
 
     def connect(self) -> None:
         if self.connection is not None:
             return
-        self._configure_odbc()
-        import IfxPy
+        import jaydebeapi
 
+        jdbc_jar = str(self._scenario_option("jdbc_jar", "")) or self._find_jdbc_jar()
         server = self.config.database.server or self.config.database.database
-        conn_str = (
-            f"SERVER={server};"
-            f"HOST={self.config.database.host};"
-            f"SERVICE={self.config.database.port};"
-            f"DATABASE={self.config.database.database};"
-            f"UID={self.config.database.user};"
-            f"PWD={self.config.database.password};"
-            "PROTOCOL=onsoctcp;"
+        url = (
+            f"jdbc:informix-sqli://{self.config.database.host}:{self.config.database.port}"
+            f"/{self.config.database.database}:INFORMIXSERVER={server}"
         )
-        self.connection = IfxPy.connect(conn_str, "", "")
+        self.connection = jaydebeapi.connect(
+            "com.informix.jdbc.IfxDriver",
+            url,
+            [self.config.database.user, self.config.database.password],
+            jdbc_jar,
+        )
+        self.connection.jconn.setAutoCommit(True)
 
     def close(self) -> None:
         if self.connection is not None:
-            import IfxPy
-            IfxPy.close(self.connection)
+            self.connection.close()
             self.connection = None
 
     def execute(self, sql: str) -> QueryResult:
@@ -277,14 +251,11 @@ class InformixAdapter(DatabaseAdapter):
             print(f"[SQL] {sql}")
         self.connect()
         assert self.connection is not None
-        import IfxPy
-        stmt = IfxPy.exec_immediate(self.connection, sql)
-        rows: list[tuple[Any, ...]] = []
-        if stmt and IfxPy.num_fields(stmt) > 0:
-            row = IfxPy.fetch_tuple(stmt)
-            while row is not False:
-                rows.append(tuple(row))
-                row = IfxPy.fetch_tuple(stmt)
+        with self.connection.cursor() as cursor:
+            cursor.execute(sql)
+            rows: list[tuple[Any, ...]] = []
+            if cursor.description is not None:
+                rows = list(cursor.fetchall())
         return QueryResult(rows=rows)
 
     def schema_exists(self, schema_name: str) -> bool:

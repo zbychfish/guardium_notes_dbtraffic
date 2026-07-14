@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-# This module is intentionally empty.
-# Informix ODBC configuration is handled in InformixAdapter.connect()
+# This file is intentionally empty – kept for backwards compatibility.
 
 # Made with Bob
