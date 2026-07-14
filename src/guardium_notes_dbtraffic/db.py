@@ -205,7 +205,8 @@ class InformixAdapter(DatabaseAdapter):
     name = "informix"
 
     @staticmethod
-    def _find_jdbc_jar() -> str:
+    def _find_jdbc_jars() -> list[str]:
+        import glob
         import os
         candidates = [
             "/opt/guardium_tz_bootcamp_automation/upload/source_files/informix/jdbc-15.0.1.3.jar",
@@ -216,12 +217,15 @@ class InformixAdapter(DatabaseAdapter):
         informix_dir = os.environ.get("INFORMIXDIR", "")
         if informix_dir:
             candidates.insert(0, os.path.join(informix_dir, "jdbc", "lib", "ifxjdbc.jar"))
-        for path in candidates:
-            if os.path.isfile(path):
-                return path
-        raise FileNotFoundError(
-            "ifxjdbc.jar not found. Set jdbc_jar in scenario options or install Informix JDBC driver."
-        )
+        jdbc = next((p for p in candidates if os.path.isfile(p)), None)
+        if not jdbc:
+            raise FileNotFoundError(
+                "ifxjdbc.jar not found. Set jdbc_jar in scenario options or install Informix JDBC driver."
+            )
+        jars = [jdbc]
+        for bson in glob.glob(os.path.join(os.path.dirname(jdbc), "bson*.jar")):
+            jars.append(bson)
+        return jars
 
     def connect(self) -> None:
         if self.connection is not None:
