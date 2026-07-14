@@ -205,47 +205,31 @@ class InformixAdapter(DatabaseAdapter):
     name = "informix"
 
     @staticmethod
-    def _setup_library_path() -> None:
+    def _preload_ifx_libraries() -> None:
+        import ctypes
         import importlib.util
         import os
 
-        lib = os.environ.get("LD_LIBRARY_PATH", "")
-
-        # Locate onedb-odbc-driver bundled with IfxPy in site-packages
         spec = importlib.util.find_spec("IfxPy")
-        if spec and spec.origin:
-            site_packages = os.path.dirname(os.path.dirname(spec.origin))
-            driver_lib = os.path.join(site_packages, "onedb-odbc-driver", "lib")
-            for sub in ("", "cli", "esql", os.path.join("client", "csm")):
-                path = os.path.join(driver_lib, sub) if sub else driver_lib
-                if os.path.isdir(path) and path not in lib:
-                    lib = f"{path}:{lib}"
-
-        # Also add INFORMIXDIR libs if available
-        informix_dir = os.environ.get("INFORMIXDIR", "")
-        if not informix_dir:
-            import subprocess
-            try:
-                result = subprocess.run(
-                    ["su", "-", "informix", "-c", "echo $INFORMIXDIR"],
-                    capture_output=True, text=True, timeout=5,
-                )
-                informix_dir = result.stdout.strip()
-                if informix_dir:
-                    os.environ["INFORMIXDIR"] = informix_dir
-            except Exception:
-                pass
-        for sub in ("lib", "lib/esql"):
-            path = f"{informix_dir}/{sub}"
-            if informix_dir and os.path.isdir(path) and path not in lib:
-                lib = f"{path}:{lib}"
-
-        os.environ["LD_LIBRARY_PATH"] = lib
+        if not (spec and spec.origin):
+            return
+        site_packages = os.path.dirname(os.path.dirname(spec.origin))
+        driver_lib = os.path.join(site_packages, "onedb-odbc-driver", "lib")
+        load_order = [
+            os.path.join(driver_lib, "esql", "libifgls.so"),
+            os.path.join(driver_lib, "esql", "libifos.so"),
+            os.path.join(driver_lib, "esql", "libifgen.so"),
+            os.path.join(driver_lib, "cli", "libifcli.so"),
+            os.path.join(driver_lib, "cli", "libthcli.so"),
+        ]
+        for so in load_order:
+            if os.path.isfile(so):
+                ctypes.CDLL(so, mode=ctypes.RTLD_GLOBAL)
 
     def connect(self) -> None:
         if self.connection is not None:
             return
-        self._setup_library_path()
+        self._preload_ifx_libraries()
         import IfxPy
 
         server = self.config.database.server or self.config.database.database
