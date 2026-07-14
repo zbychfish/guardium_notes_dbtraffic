@@ -207,6 +207,20 @@ class InformixAdapter(DatabaseAdapter):
     def connect(self) -> None:
         if self.connection is not None:
             return
+        import os
+        if not os.environ.get("INFORMIXDIR"):
+            import subprocess
+            try:
+                result = subprocess.run(
+                    ["su", "-", "informix", "-c", "echo $INFORMIXDIR"],
+                    capture_output=True, text=True, timeout=5,
+                )
+                informix_dir = result.stdout.strip()
+                if informix_dir:
+                    os.environ["INFORMIXDIR"] = informix_dir
+                    os.environ.setdefault("INFORMIXSERVER", self.config.database.server or "")
+            except Exception:
+                pass
         import IfxPy
 
         server = self.config.database.server or self.config.database.database
