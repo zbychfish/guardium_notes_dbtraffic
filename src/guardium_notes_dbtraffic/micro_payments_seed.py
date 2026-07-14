@@ -117,7 +117,7 @@ def informix_seed_customer_sql(customers: list[SeedCustomer]) -> list[str]:
             f"'{_escape_sql_text(customer.customer_fname)}', "
             f"'{_escape_sql_text(customer.customer_lname)}', "
             f"'{_escape_sql_text(customer.full_name)}', "
-            f"TO_DATE('{customer.birthday.strftime('%Y-%m-%d')}', 'YYYY-MM-DD'), "
+            f"TO_DATE('{customer.birthday.strftime('%Y-%m-%d')}', '%Y-%m-%d'), "
             f"'{_escape_sql_text(customer.citizen_id)}', "
             f"'{_escape_sql_text(customer.birth_place)}', "
             f"'{_escape_sql_text(customer.street)}', "
