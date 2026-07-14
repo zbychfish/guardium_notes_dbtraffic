@@ -276,22 +276,23 @@ class InformixAdapter(DatabaseAdapter):
             admin_users=self._admin_users(),
             default_password=self._default_password(),
         )
-        self.execute_batch(statements)
-
-    def cleanup_micro_payments_schema(self) -> None:
-        statements = informix_cleanup_sql(
-            app_users=self._app_users(),
-            admin_users=self._admin_users(),
-        )
         for statement in statements:
             try:
                 self.execute(statement)
             except Exception as exc:
                 msg = str(exc)
-                if any(s in msg for s in ("-206", "-951", "-25596", "-26732", "no record found", "is not in the database", "does not exist")):
-                    pass  # table/user does not exist – safe to ignore during cleanup
+                if any(s in msg for s in ("already exists", "duplicate table name", "User does not exist", "USERMAPPING")):
+                    pass  # table already exists or user/grant not supported – idempotent deploy
                 else:
                     raise
+
+    def cleanup_micro_payments_schema(self) -> None:
+        for table in ["transactions", "credit_cards", "customers", "features", "extras"]:
+            count = self.execute_scalar(
+                f"SELECT COUNT(*) FROM systables WHERE tabname = '{table}' AND tabtype = 'T'"
+            )
+            if int(count or 0) > 0:
+                self.execute(f"DROP TABLE {table}")
 
 
 def build_adapter(config: AppConfig) -> DatabaseAdapter:
