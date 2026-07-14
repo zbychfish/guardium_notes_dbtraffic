@@ -1,3 +1,4 @@
+import guardium_notes_dbtraffic._ifx_preload  # noqa: F401  must be first
 import argparse
 from pathlib import Path
 
