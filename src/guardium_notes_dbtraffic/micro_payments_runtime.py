@@ -47,11 +47,12 @@ def _build_customer_insert_sql(database_type: str, locale: str) -> str:
     last_name = faker_instance.last_name()
     birthday = generate_date_in_range()
     full_name = f"{first_name} {last_name}"
-    birthday_sql = (
-        f"'{birthday.strftime('%Y-%m-%d')}'"
-        if database_type in ("postgres", "informix")
-        else f"DATE '{birthday.strftime('%Y-%m-%d')}'"
-    )
+    if database_type == "postgres":
+        birthday_sql = f"'{birthday.strftime('%Y-%m-%d')}'"
+    elif database_type == "informix":
+        birthday_sql = f"TO_DATE('{birthday.strftime('%Y-%m-%d')}', '%Y-%m-%d')"
+    else:
+        birthday_sql = f"DATE '{birthday.strftime('%Y-%m-%d')}'"
     table = _customers_table(database_type)
     return (
         f"INSERT INTO {table} ("
