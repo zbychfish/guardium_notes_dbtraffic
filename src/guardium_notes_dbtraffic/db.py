@@ -207,7 +207,7 @@ class InformixAdapter(DatabaseAdapter):
     def connect(self) -> None:
         if self.connection is not None:
             return
-        import IfxPy
+        import IfxPyDbi
 
         conn_str = (
             f"SERVER={self.config.database.database};"
@@ -218,12 +218,11 @@ class InformixAdapter(DatabaseAdapter):
             f"PWD={self.config.database.password};"
             "PROTOCOL=onsoctcp;"
         )
-        self.connection = IfxPy.connect(conn_str, "", "")
+        self.connection = IfxPyDbi.connect(conn_str, "", "")
 
     def close(self) -> None:
         if self.connection is not None:
-            import IfxPy
-            IfxPy.close(self.connection)
+            self.connection.close()
             self.connection = None
 
     def execute(self, sql: str) -> QueryResult:
@@ -231,14 +230,11 @@ class InformixAdapter(DatabaseAdapter):
             print(f"[SQL] {sql}")
         self.connect()
         assert self.connection is not None
-        import IfxPy
-        stmt = IfxPy.exec_immediate(self.connection, sql)
-        rows: list[tuple[Any, ...]] = []
-        if stmt:
-            row = IfxPy.fetch_tuple(stmt)
-            while row is not False:
-                rows.append(tuple(row))
-                row = IfxPy.fetch_tuple(stmt)
+        with self.connection.cursor() as cursor:
+            cursor.execute(sql)
+            rows: list[tuple[Any, ...]] = []
+            if cursor.description is not None:
+                rows = list(cursor.fetchall())
         return QueryResult(rows=rows)
 
     def schema_exists(self, schema_name: str) -> bool:
