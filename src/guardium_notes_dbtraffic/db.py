@@ -204,12 +204,27 @@ class OracleAdapter(DatabaseAdapter):
 class InformixAdapter(DatabaseAdapter):
     name = "informix"
 
-    def connect(self) -> None:
-        if self.connection is not None:
-            return
+    @staticmethod
+    def _setup_library_path() -> None:
+        import importlib.util
         import os
-        import subprocess
-        if not os.environ.get("INFORMIXDIR"):
+
+        lib = os.environ.get("LD_LIBRARY_PATH", "")
+
+        # Locate onedb-odbc-driver bundled with IfxPy in site-packages
+        spec = importlib.util.find_spec("IfxPy")
+        if spec and spec.origin:
+            site_packages = os.path.dirname(os.path.dirname(spec.origin))
+            driver_lib = os.path.join(site_packages, "onedb-odbc-driver", "lib")
+            for sub in ("", "cli", "esql", os.path.join("client", "csm")):
+                path = os.path.join(driver_lib, sub) if sub else driver_lib
+                if os.path.isdir(path) and path not in lib:
+                    lib = f"{path}:{lib}"
+
+        # Also add INFORMIXDIR libs if available
+        informix_dir = os.environ.get("INFORMIXDIR", "")
+        if not informix_dir:
+            import subprocess
             try:
                 result = subprocess.run(
                     ["su", "-", "informix", "-c", "echo $INFORMIXDIR"],
@@ -218,15 +233,19 @@ class InformixAdapter(DatabaseAdapter):
                 informix_dir = result.stdout.strip()
                 if informix_dir:
                     os.environ["INFORMIXDIR"] = informix_dir
-                    os.environ.setdefault("INFORMIXSERVER", self.config.database.server or "")
-                    lib = os.environ.get("LD_LIBRARY_PATH", "")
-                    for sub in ("lib", "lib/esql"):
-                        path = f"{informix_dir}/{sub}"
-                        if path not in lib:
-                            lib = f"{path}:{lib}"
-                    os.environ["LD_LIBRARY_PATH"] = lib
             except Exception:
                 pass
+        for sub in ("lib", "lib/esql"):
+            path = f"{informix_dir}/{sub}"
+            if informix_dir and os.path.isdir(path) and path not in lib:
+                lib = f"{path}:{lib}"
+
+        os.environ["LD_LIBRARY_PATH"] = lib
+
+    def connect(self) -> None:
+        if self.connection is not None:
+            return
+        self._setup_library_path()
         import IfxPy
 
         server = self.config.database.server or self.config.database.database
