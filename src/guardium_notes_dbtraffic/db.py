@@ -208,6 +208,7 @@ class InformixAdapter(DatabaseAdapter):
     def _find_jdbc_jar() -> str:
         import os
         candidates = [
+            "/opt/guardium_tz_bootcamp_automation/upload/source_files/informix/jdbc-15.0.1.3.jar",
             "/opt/ibm/informix/jdbc/lib/ifxjdbc.jar",
             "/opt/informix/jdbc/lib/ifxjdbc.jar",
             "/usr/informix/jdbc/lib/ifxjdbc.jar",
