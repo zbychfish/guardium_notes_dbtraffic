@@ -288,7 +288,7 @@ class InformixAdapter(DatabaseAdapter):
                 self.execute(statement)
             except Exception as exc:
                 msg = str(exc)
-                if any(code in msg for code in ("-206", "-951", "-25596", "-26732")):
+                if any(code in msg for code in ("-206", "-951", "-25596", "-26732")) or "no record found" in msg:
                     pass  # table/user does not exist – safe to ignore during cleanup
                 else:
                     raise
