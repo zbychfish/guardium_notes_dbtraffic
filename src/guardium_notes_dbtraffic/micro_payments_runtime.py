@@ -83,7 +83,7 @@ def _random_row_sql(database_type: str, table: str, column: str, where: str = ""
     if database_type == "oracle":
         return f"SELECT {column} FROM {table}{where_clause} ORDER BY DBMS_RANDOM.VALUE FETCH FIRST 1 ROWS ONLY"
     if database_type == "informix":
-        return f"SELECT FIRST 1 {column} FROM {table}{where_clause} ORDER BY DBMS_RANDOM.value"
+        return f"SELECT FIRST 1 {column} FROM {table}{where_clause} ORDER BY MOD(ROWID, 1000)"
     return f"SELECT {column} FROM {table}{where_clause} ORDER BY random() LIMIT 1"
 
 
