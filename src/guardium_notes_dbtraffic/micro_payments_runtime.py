@@ -145,8 +145,8 @@ def _get_customer_info_sql(database_type: str, info_type: str) -> str:
     if info_type == "get_extras_per_time":
         if database_type == "informix":
             return (
-                f"SELECT EXTEND(transaction_time, YEAR TO HOUR), COUNT(extra_id) "
-                f"FROM {t} GROUP BY EXTEND(transaction_time, YEAR TO HOUR)"
+                f"SELECT EXTEND(transaction_time, YEAR TO HOUR) AS tx_hour, COUNT(extra_id) "
+                f"FROM {t} GROUP BY tx_hour"
             )
         return (
             f"SELECT TO_CHAR(transaction_time, 'YYYY-MM-DD HH24'), COUNT(extra_id) "
