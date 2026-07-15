@@ -83,7 +83,7 @@ def _random_row_sql(database_type: str, table: str, column: str, where: str = ""
     if database_type == "oracle":
         return f"SELECT {column} FROM {table}{where_clause} ORDER BY DBMS_RANDOM.VALUE FETCH FIRST 1 ROWS ONLY"
     if database_type == "informix":
-        return f"SELECT FIRST 1 {column} FROM {table}{where_clause} ORDER BY RANDOM()"
+        return f"SELECT FIRST 1 {column} FROM {table}{where_clause} ORDER BY DBMS_RANDOM.value"
     return f"SELECT {column} FROM {table}{where_clause} ORDER BY random() LIMIT 1"
 
 
@@ -117,26 +117,32 @@ def _get_customer_info_sql(database_type: str, info_type: str) -> str:
     if info_type == "email":
         return f"SELECT mail FROM {c}"
     if info_type == "users_from_city":
-        return f"SELECT city, COUNT(*) FROM {c} GROUP BY city"
+        return f"SELECT city, COUNT(*) FROM {c} GROUP BY 1" if database_type == "informix" else f"SELECT city, COUNT(*) FROM {c} GROUP BY city"
     if info_type == "has_user_cc":
         return (
             f"SELECT c.full_name, COUNT(cc.card_id) "
             f"FROM {c} c LEFT JOIN {cc} cc ON c.customer_id = cc.customer_id "
-            "GROUP BY c.full_name"
+            f"GROUP BY {'1' if database_type == 'informix' else 'c.full_name'}"
         )
     if info_type == "extras_per_user":
         return (
             f"SELECT c.full_name, COUNT(t.extra_id) "
             f"FROM {c} c LEFT JOIN {t} t ON c.customer_id = t.customer_id "
-            "GROUP BY c.full_name"
+            f"GROUP BY {'1' if database_type == 'informix' else 'c.full_name'}"
         )
     if info_type == "features_per_user":
         return (
             f"SELECT c.full_name, COUNT(t.feature_id) "
             f"FROM {c} c LEFT JOIN {t} t ON c.customer_id = t.customer_id "
-            "GROUP BY c.full_name"
+            f"GROUP BY {'1' if database_type == 'informix' else 'c.full_name'}"
         )
     if info_type == "get_addons_per_user":
+        if database_type == "informix":
+            return (
+                f"SELECT c.full_name, COUNT(t.feature_id), COUNT(t.extra_id) "
+                f"FROM {c} c LEFT JOIN {t} t ON c.customer_id = t.customer_id "
+                "GROUP BY 1"
+            )
         return (
             f"SELECT c.full_name, COUNT(t.feature_id) + COUNT(t.extra_id) "
             f"FROM {c} c LEFT JOIN {t} t ON c.customer_id = t.customer_id "
@@ -145,8 +151,8 @@ def _get_customer_info_sql(database_type: str, info_type: str) -> str:
     if info_type == "get_extras_per_time":
         if database_type == "informix":
             return (
-                f"SELECT EXTEND(transaction_time, YEAR TO HOUR) AS tx_hour, COUNT(extra_id) "
-                f"FROM {t} GROUP BY tx_hour"
+                f"SELECT EXTEND(transaction_time, YEAR TO HOUR), COUNT(extra_id) "
+                f"FROM {t} GROUP BY 1"
             )
         return (
             f"SELECT TO_CHAR(transaction_time, 'YYYY-MM-DD HH24'), COUNT(extra_id) "
@@ -155,7 +161,7 @@ def _get_customer_info_sql(database_type: str, info_type: str) -> str:
     return (
         f"SELECT c.full_name, COUNT(t.trans_id) "
         f"FROM {c} c LEFT JOIN {t} t ON c.customer_id = t.customer_id "
-        "GROUP BY c.full_name"
+        f"GROUP BY {'1' if database_type == 'informix' else 'c.full_name'}"
     )
 
 
