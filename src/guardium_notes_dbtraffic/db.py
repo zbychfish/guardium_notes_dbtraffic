@@ -204,36 +204,17 @@ class OracleAdapter(DatabaseAdapter):
 class InformixAdapter(DatabaseAdapter):
     name = "informix"
 
-    @staticmethod
-    def _find_jdbc_jars() -> list[str]:
-        import glob
-        import os
-        candidates = [
-            "/opt/guardium_tz_bootcamp_automation/upload/source_files/informix/jdbc-15.0.1.3.jar",
-            "/opt/ibm/informix/jdbc/lib/ifxjdbc.jar",
-            "/opt/informix/jdbc/lib/ifxjdbc.jar",
-            "/usr/informix/jdbc/lib/ifxjdbc.jar",
-        ]
-        informix_dir = os.environ.get("INFORMIXDIR", "")
-        if informix_dir:
-            candidates.insert(0, os.path.join(informix_dir, "jdbc", "lib", "ifxjdbc.jar"))
-        jdbc = next((p for p in candidates if os.path.isfile(p)), None)
-        if not jdbc:
-            raise FileNotFoundError(
-                "ifxjdbc.jar not found. Set jdbc_jar in scenario options or install Informix JDBC driver."
-            )
-        jars = [jdbc]
-        for bson in glob.glob(os.path.join(os.path.dirname(jdbc), "bson*.jar")):
-            jars.append(bson)
-        return jars
-
     def connect(self) -> None:
         if self.connection is not None:
             return
         import jaydebeapi
 
         jdbc_jar_option = str(self._scenario_option("jdbc_jar", ""))
-        jdbc_jars: list[str] = jdbc_jar_option.split(":") if jdbc_jar_option else self._find_jdbc_jars()
+        if not jdbc_jar_option:
+            raise ValueError(
+                "jdbc_jar is required for Informix. Set it in scenario options: jdbc_jar: /path/to/ifxjdbc.jar"
+            )
+        jdbc_jars: list[str] = jdbc_jar_option.split(":")
         server = self.config.database.server or self.config.database.database
         url = (
             f"jdbc:informix-sqli://{self.config.database.host}:{self.config.database.port}"
