@@ -222,6 +222,7 @@ def run_micro_payments(config: AppConfig, duration_seconds: int, think_time_ms: 
                     database=config.database.database,
                     user=current_user,
                     password=default_password,
+                    server=config.database.server,
                 ),
                 workload=config.workload,
                 scenario=config.scenario,
